@@ -22,8 +22,18 @@ type GRPCServer struct {
 	StreamChannel               chan chatcompletionstream.ChatCompletionOutputDTO
 }
 
-func NewGRPCServer(chatCompletionStreamUseCase chatcompletionstream.ChatCompletionUseCase, chatConfigStream chatcompletionstream.ChatCompletionConfigInputDTO, port, authToken string, streamChannel chan chatcompletionstream.ChatCompletionOutputDTO) *GRPCServer {
-	chatService := service.NewChatService(chatCompletionStreamUseCase, chatConfigStream, streamChannel)
+func NewGRPCServer(
+	chatCompletionStreamUseCase chatcompletionstream.ChatCompletionUseCase,
+	chatConfigStream chatcompletionstream.ChatCompletionConfigInputDTO,
+	port,
+	authToken string,
+	streamChannel chan chatcompletionstream.ChatCompletionOutputDTO,
+) *GRPCServer {
+	chatService := service.NewChatService(
+		chatCompletionStreamUseCase,
+		chatConfigStream,
+		streamChannel,
+	)
 	return &GRPCServer{
 		ChatCompletionStreamUseCase: chatCompletionStreamUseCase,
 		ChatConfigStream:            chatConfigStream,
@@ -34,7 +44,35 @@ func NewGRPCServer(chatCompletionStreamUseCase chatcompletionstream.ChatCompleti
 	}
 }
 
-func (g *GRPCServer) AuthInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+// func (g *GRPCServer) AuthInterceptor(
+// 	ctx context.Context,
+// 	req interface{},
+// 	info *grpc.UnaryServerInterceptor,
+// 	handler grpc.UnaryHandler,
+// ) (interface{}, error) {
+// 	md, ok := metadata.FromIncomingContext(ctx)
+// 	if !ok {
+// 		return nil, status.Error(codes.Unauthenticated, "metadata is not provided")
+// 	}
+
+// 	token := md.Get("authorization")
+// 	if len(token) == 0 {
+// 		return nil, status.Error(codes.Unauthenticated, "authorization token is not provided")
+// 	}
+
+// 	if token[0] != g.AuthToken {
+// 		return nil, status.Error(codes.Unauthenticated, "authorization token is invalid")
+// 	}
+
+// 	return handler(ctx, req)
+// }
+
+func (g *GRPCServer) AuthInterceptor(
+	srv interface{},
+	ss grpc.ServerStream,
+	info *grpc.StreamServerInfo,
+	handler grpc.StreamHandler,
+) error {
 	ctx := ss.Context()
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -55,6 +93,7 @@ func (g *GRPCServer) AuthInterceptor(srv interface{}, ss grpc.ServerStream, info
 
 func (g *GRPCServer) Start() error {
 	opts := []grpc.ServerOption{
+		//grpc.UnaryInterceptor(g.AuthInterceptor),
 		grpc.StreamInterceptor(g.AuthInterceptor),
 	}
 	grpcServer := grpc.NewServer(opts...)
